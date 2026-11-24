@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+# Inspect the same bytes that will enter history.
+git diff --quiet || { echo "Stage or stash unstaged edits before validation."; exit 1; }
+python scripts/repository.py
+python scripts/check.py
