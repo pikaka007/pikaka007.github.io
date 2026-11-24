@@ -10,6 +10,9 @@ const Notebook: QuartzComponent = ({ allFiles, fileData }) => {
   const notes = records.filter(f => f.frontmatter?.type !== "moc")
   const topics = records.filter(f => f.frontmatter?.type === "moc")
   const hasTags = records.some(f => f.frontmatter?.tags?.length)
+  const tagLink = hasTags && <a class="internal notebook-tag-link" href="/tags/">
+    浏览标签 <span aria-hidden="true">→</span>
+  </a>
   const dateOf = (f: typeof notes[number]) => String(f.frontmatter?.updated ?? "").slice(0,10)
   notes.sort((a,b) => {
     const byTitle = String(a.frontmatter?.title).localeCompare(String(b.frontmatter?.title), "zh-CN")
@@ -43,7 +46,10 @@ const Notebook: QuartzComponent = ({ allFiles, fileData }) => {
           {name} <span>{counts.get(name) ?? 0}</span>
         </button>)}
       </div>
-      <h2>{settings.order === "按标题" ? "全部笔记" : "近期更新"}</h2>
+      <div class="notebook-list-heading">
+        <h2>{settings.order === "按标题" ? "全部笔记" : "近期更新"}</h2>
+        {tagLink}
+      </div>
       <ul>{notes.map(f => {
         const category = categoryOf(f)
         return <li key={f.slug} data-category={category}>
@@ -52,9 +58,9 @@ const Notebook: QuartzComponent = ({ allFiles, fileData }) => {
       </li>})}</ul>
       <p class="category-empty" role="status" hidden></p>
     </section>}
-    {(!!topics.length || hasTags) && <nav aria-label="主题索引"><h2>按主题浏览</h2>{topics.map(f =>
+    {!!topics.length && <nav aria-label="主题索引">
+      <div class="notebook-list-heading"><h2>主题索引</h2>{!notes.length && tagLink}</div>{topics.map(f =>
       <a key={f.slug} class="internal" href={resolveRelative(fileData.slug!, f.slug!)}>{f.frontmatter?.title}</a>)}
-      {hasTags && <a href="/tags/">全部标签</a>}
     </nav>}
   </section>
 }

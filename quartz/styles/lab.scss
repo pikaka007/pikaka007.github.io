@@ -33,7 +33,10 @@ body[data-slug="index"] .page-footer { margin: 0; }
 .notebook-index a:hover { text-decoration: underline; }
 .notebook-index :is(small,time) { color: var(--darkgray); font-size: .85rem; }
 .notebook-index nav { margin-top: 2.6rem; }
-.notebook-index nav a { display: inline-block; margin: .35rem 1.2rem .35rem 0; }
+.notebook-index nav > a { display: inline-block; margin: .35rem 1.2rem .35rem 0; }
+.notebook-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .45rem; }
+.notebook-list-heading h2 { margin: 0; }
+.notebook-index .notebook-tag-link { display: inline-flex; align-items: center; gap: .35em; min-height: 2rem; color: var(--secondary); font-size: .9rem; font-weight: 500; }
 @media(max-width:600px){ .notebook-index li { grid-template-columns: 1fr auto; gap: .3rem .6rem; } .notebook-index li small { display:none; } .notebook-index li a { font-size:1rem; } }
 
 
