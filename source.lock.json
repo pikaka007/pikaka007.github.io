@@ -4,7 +4,6 @@
   ".github/workflows/pages.yml": "a558d80734bb891349e92d2392fd4b3ca26aa1dd9df0df34f566c7a3e4d35851",
   ".gitignore": "30dcf6eac809e734cc852ea701b865e2d5644002c4ef49b7dd49ca1bfcad6e2c",
   "LICENSE.txt": "3553b1bda6785a2fdb0ccb5f1c93ea0b7969ae1456d0bb734964ae73ef02a1dc",
-  "README.md": "fec3b5b1748e218b7d9292b695d958929c744d5d904cccbc898a7995f996f5dc",
   "globals.d.ts": "8d77d6699277df8caef3e0105fded9c33e0f26ea4df91d37f8fe53f4b467a17f",
   "index.d.ts": "d2eaadb49ca133ba15f09579dad7c7b7595e4d53d3a812539d71218d979d2c2c",
   "notebook.json": "75536583fd11a3e2422a2a11d137094be7a4bf85b70084772c3231c3e4a4c8cd",
