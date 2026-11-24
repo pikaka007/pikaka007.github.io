@@ -2,14 +2,7 @@ import { QuartzComponent } from "./types"
 import { resolveRelative } from "../util/path"
 import settings from "../../notebook.json"
 
-const categories = [
-  { name: "知识学习", types: ["knowledge"] },
-  { name: "故障排查", types: ["troubleshooting"] },
-  { name: "工程项目", types: ["project"] },
-  { name: "研究与实验", types: ["paper", "experiment", "idea"] },
-  { name: "工具手册", types: ["tool"] },
-  { name: "学习记录", types: ["log", "reflection"] },
-]
+const categories = settings.categories
 
 const Notebook: QuartzComponent = ({ allFiles, fileData }) => {
   if (fileData.slug !== "index") return null
@@ -22,6 +15,20 @@ const Notebook: QuartzComponent = ({ allFiles, fileData }) => {
     const byTitle = String(a.frontmatter?.title).localeCompare(String(b.frontmatter?.title), "zh-CN")
     return settings.order === "按标题" ? byTitle : dateOf(b).localeCompare(dateOf(a)) || byTitle
   })
+  const categoryOf = (f: typeof notes[number]) => {
+    const meta = f.frontmatter
+    const group = meta?.category
+      ? categories.find(c => c.id === meta.category)
+      : categories.find(c => c.types.includes(String(meta?.type)))
+    return group?.name ?? "未分类"
+  }
+  const counts = new Map<string, number>()
+  for (const f of notes) {
+    const name = categoryOf(f)
+    counts.set(name, (counts.get(name) ?? 0) + 1)
+  }
+  const names = categories.map(c => c.name)
+  if (counts.has("未分类")) names.push("未分类")
   return <section class={records.length ? "notebook-index" : "notebook-index is-empty"}>
     <header class="notebook-heading">
       {!records.length && <div class="book-cover" aria-hidden="true"><span /></div>}
@@ -32,13 +39,13 @@ const Notebook: QuartzComponent = ({ allFiles, fileData }) => {
     {!!notes.length && <section aria-label="笔记列表">
       <div class="category-filter" role="group" aria-label="按笔记分类筛选">
         <button type="button" data-filter="全部" aria-pressed="true">全部 <span>{notes.length}</span></button>
-        {categories.map(({ name, types }) => <button key={name} type="button" data-filter={name} aria-pressed="false">
-          {name} <span>{notes.filter(f => types.includes(String(f.frontmatter?.type))).length}</span>
+        {names.map(name => <button key={name} type="button" data-filter={name} aria-pressed="false">
+          {name} <span>{counts.get(name) ?? 0}</span>
         </button>)}
       </div>
       <h2>{settings.order === "按标题" ? "全部笔记" : "近期更新"}</h2>
       <ul>{notes.map(f => {
-        const category = categories.find(c => c.types.includes(String(f.frontmatter?.type)))?.name
+        const category = categoryOf(f)
         return <li key={f.slug} data-category={category}>
         <a class="internal" href={resolveRelative(fileData.slug!, f.slug!)}>{f.frontmatter?.title}</a>
         <small>{category}</small><time>{dateOf(f)}</time>

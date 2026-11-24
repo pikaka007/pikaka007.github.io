@@ -4,6 +4,52 @@
   "intro": "",
   "accent": "松绿",
   "size": "标准",
-  "order": "最近更新"
+  "order": "最近更新",
+  "categories": [
+    {
+      "id": "knowledge",
+      "name": "知识学习",
+      "types": [
+        "knowledge"
+      ]
+    },
+    {
+      "id": "troubleshooting",
+      "name": "故障排查",
+      "types": [
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "project",
+      "name": "工程项目",
+      "types": [
+        "project"
+      ]
+    },
+    {
+      "id": "paper",
+      "name": "研究与实验",
+      "types": [
+        "paper",
+        "experiment",
+        "idea"
+      ]
+    },
+    {
+      "id": "tool",
+      "name": "工具手册",
+      "types": [
+        "tool"
+      ]
+    },
+    {
+      "id": "log",
+      "name": "学习记录",
+      "types": [
+        "log",
+        "reflection"
+      ]
+    }
+  ]
 }
-
