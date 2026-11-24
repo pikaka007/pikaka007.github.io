@@ -1,5 +1,5 @@
 import { QuartzComponent } from "./types"
-import { resolveRelative } from "../util/path"
+import { FullSlug, resolveRelative } from "../util/path"
 import settings from "../../notebook.json"
 
 const categories = settings.categories
@@ -9,10 +9,6 @@ const Notebook: QuartzComponent = ({ allFiles, fileData }) => {
   const records = allFiles.filter(f => f.slug && f.slug !== "index")
   const notes = records.filter(f => f.frontmatter?.type !== "moc")
   const topics = records.filter(f => f.frontmatter?.type === "moc")
-  const hasTags = records.some(f => f.frontmatter?.tags?.length)
-  const tagLink = hasTags && <a class="internal notebook-tag-link" href="/tags/">
-    浏览标签 <span aria-hidden="true">→</span>
-  </a>
   const dateOf = (f: typeof notes[number]) => String(f.frontmatter?.updated ?? "").slice(0,10)
   notes.sort((a,b) => {
     const byTitle = String(a.frontmatter?.title).localeCompare(String(b.frontmatter?.title), "zh-CN")
@@ -39,27 +35,33 @@ const Notebook: QuartzComponent = ({ allFiles, fileData }) => {
       {settings.intro && <p class="notebook-intro">{settings.intro}</p>}
       {!notes.length && <p class="empty-message">还没有公开笔记。</p>}
     </header>
-    {!!notes.length && <section aria-label="笔记列表">
+    {!!notes.length && <section class="notebook-catalog" aria-label="笔记列表">
+      <div class="catalog-sidebar"><h2>分类目录</h2>
       <div class="category-filter" role="group" aria-label="按笔记分类筛选">
         <button type="button" data-filter="全部" aria-pressed="true">全部 <span>{notes.length}</span></button>
         {names.map(name => <button key={name} type="button" data-filter={name} aria-pressed="false">
           {name} <span>{counts.get(name) ?? 0}</span>
         </button>)}
       </div>
+      </div>
+      <div class="catalog-main">
       <div class="notebook-list-heading">
         <h2>{settings.order === "按标题" ? "全部笔记" : "近期更新"}</h2>
-        {tagLink}
       </div>
       <ul>{notes.map(f => {
         const category = categoryOf(f)
         return <li key={f.slug} data-category={category}>
         <a class="internal" href={resolveRelative(fileData.slug!, f.slug!)}>{f.frontmatter?.title}</a>
-        <small>{category}</small><time>{dateOf(f)}</time>
+        <time dateTime={dateOf(f)}>{dateOf(f)}</time>
+        {!!f.frontmatter?.tags?.length && <div class="note-topics" aria-label="文章标签">
+          {f.frontmatter.tags.map(tag => <a class="internal" key={tag} href={resolveRelative(fileData.slug!, `tags/${tag}` as FullSlug)}><span aria-hidden="true">#</span>{tag}</a>)}
+        </div>}
       </li>})}</ul>
       <p class="category-empty" role="status" hidden></p>
+      </div>
     </section>}
     {!!topics.length && <nav aria-label="主题索引">
-      <div class="notebook-list-heading"><h2>主题索引</h2>{!notes.length && tagLink}</div>{topics.map(f =>
+      <div class="notebook-list-heading"><h2>主题索引</h2></div>{topics.map(f =>
       <a key={f.slug} class="internal" href={resolveRelative(fileData.slug!, f.slug!)}>{f.frontmatter?.title}</a>)}
     </nav>}
   </section>
