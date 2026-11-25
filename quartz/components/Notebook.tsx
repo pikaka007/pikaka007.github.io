@@ -1,5 +1,6 @@
 import { QuartzComponent } from "./types"
 import { FullSlug, resolveRelative } from "../util/path"
+import { toString } from "hast-util-to-string"
 import settings from "../../notebook.json"
 
 const categories = settings.categories
@@ -28,35 +29,70 @@ const Notebook: QuartzComponent = ({ allFiles, fileData }) => {
   }
   const names = categories.map(c => c.name)
   if (counts.has("未分类")) names.push("未分类")
+  const groups = new Map<string, typeof notes>()
+  for (const f of notes) {
+    const month = settings.order === "按标题" ? "" : dateOf(f).slice(0, 7)
+    if (!groups.has(month)) groups.set(month, [])
+    groups.get(month)!.push(f)
+  }
+  function summary(f: typeof notes[number]) {
+    if (f.frontmatter?.description) return f.frontmatter.description
+    const blocks = (f.htmlAst?.children ?? []).filter(b => b.type === "element")
+    for (const [i, block] of blocks.entries()) {
+      if (block.type !== "element" || block.tagName !== "p") continue
+      const text = toString(block).trim()
+      const next = blocks[i + 1]
+      if (/[：:]$/.test(text) && next?.type === "element" && next.tagName === "ul") {
+        const items = next.children.filter(c => c.type === "element" && c.tagName === "li")
+        const examples = items.slice(0, 3).map(c => toString(c).trim())
+        if (examples.length && examples.join("").length < 90) {
+          return text + examples.join("、") + (items.length > examples.length ? "等。" : "。")
+        }
+      }
+      const first = text.match(/^.{4,220}?[。！？]|^.{4,220}?[.!?](?=\s|$)/u)
+      if (first) return first[0]
+    }
+    return ""
+  }
+  const visible = names.filter(name => counts.has(name))
+  const extra = [...visible.slice(3), ...names.filter(name => !counts.has(name))]
+  const categoryButton = (name: string) => <button key={name} type="button" data-filter={name} aria-pressed="false">
+    {name} <span>{counts.get(name) ?? 0}</span>
+  </button>
   return <section class={records.length ? "notebook-index" : "notebook-index is-empty"}>
     <header class="notebook-heading">
       {!records.length && <div class="book-cover" aria-hidden="true"><span /></div>}
       <h1>{settings.heading}</h1>
+      {!!notes.length && <button class="journal-search" type="button">搜索标题、标签或正文</button>}
       {settings.intro && <p class="notebook-intro">{settings.intro}</p>}
       {!notes.length && <p class="empty-message">还没有公开笔记。</p>}
     </header>
     {!!notes.length && <section class="notebook-catalog" aria-label="笔记列表">
-      <div class="catalog-sidebar"><h2>分类目录</h2>
+      <div class="catalog-sidebar">
       <div class="category-filter" role="group" aria-label="按笔记分类筛选">
         <button type="button" data-filter="全部" aria-pressed="true">全部 <span>{notes.length}</span></button>
-        {names.map(name => <button key={name} type="button" data-filter={name} aria-pressed="false">
-          {name} <span>{counts.get(name) ?? 0}</span>
-        </button>)}
+        {visible.slice(0,3).map(categoryButton)}
+        {!!extra.length && <details class="more-categories"><summary>更多分类</summary><div>{extra.map(categoryButton)}</div></details>}
       </div>
       </div>
       <div class="catalog-main">
-      <div class="notebook-list-heading">
-        <h2>{settings.order === "按标题" ? "全部笔记" : "近期更新"}</h2>
-      </div>
-      <ul>{notes.map(f => {
-        const category = categoryOf(f)
-        return <li key={f.slug} data-category={category}>
-        <a class="internal" href={resolveRelative(fileData.slug!, f.slug!)}>{f.frontmatter?.title}</a>
-        <time dateTime={dateOf(f)}>{dateOf(f)}</time>
-        {!!f.frontmatter?.tags?.length && <div class="note-topics" aria-label="文章标签">
-          {f.frontmatter.tags.map(tag => <a class="internal" key={tag} href={resolveRelative(fileData.slug!, `tags/${tag}` as FullSlug)}><span aria-hidden="true">#</span>{tag}</a>)}
-        </div>}
-      </li>})}</ul>
+      {Array.from(groups, ([month, entries]) => <section class="journal-month" key={month}>
+        <h2>{month ? month.slice(0,4) + " 年 " + Number(month.slice(5)) + " 月" : "全部笔记"}</h2>
+        <ul>{entries.map(f => {
+          const title = String(f.frontmatter?.title)
+          const tags = (f.frontmatter?.tags ?? []).filter(t => t.toLowerCase() !== title.toLowerCase())
+          const excerpt = summary(f)
+          return <li key={f.slug} data-category={categoryOf(f)}>
+            <time dateTime={dateOf(f)}>{month ? dateOf(f).slice(5).replace("-", ".") : dateOf(f)}</time>
+            <div><small>{categoryOf(f)}</small>
+              <h3><a class="internal" href={resolveRelative(fileData.slug!, f.slug!)}>{title}</a></h3>
+              {excerpt && <p>{excerpt}</p>}
+              {!!tags.length && <div class="note-topics">{tags.map(tag => <a class="internal" key={tag}
+                href={resolveRelative(fileData.slug!, `tags/${tag}` as FullSlug)}>#{tag}</a>)}</div>}
+            </div>
+          </li>
+        })}</ul>
+      </section>)}
       <p class="category-empty" role="status" hidden></p>
       </div>
     </section>}
@@ -68,6 +104,7 @@ const Notebook: QuartzComponent = ({ allFiles, fileData }) => {
 }
 Notebook.afterDOMLoaded = `
 document.addEventListener("click", (event) => {
+  if (event.target.closest?.(".journal-search")) document.querySelector(".sidebar.left .search-button")?.click()
   const button = event.target.closest?.(".category-filter button")
   if (!button) return
   const section = button.closest("section")
@@ -80,6 +117,7 @@ document.addEventListener("click", (event) => {
     row.hidden = selected !== "全部" && row.dataset.category !== selected
     if (!row.hidden) count++
   }
+  for (const month of section.querySelectorAll(".journal-month")) month.hidden = !month.querySelector("li:not([hidden])")
   const empty = section.querySelector(".category-empty")
   empty.textContent = count ? "" : "「" + selected + "」还没有公开笔记。"
   empty.hidden = count !== 0

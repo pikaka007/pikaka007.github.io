@@ -28,11 +28,11 @@ const config: QuartzConfig = {
       },
       colors: {
         lightMode: {
-          light: "#fbfcfa",
+          light: "#fcf9f3",
           lightgray: "#e5e5e5",
           gray: "#b8b8b8",
           darkgray: "#4e4e4e",
-          dark: "#172c40",
+          dark: "#342e27",
           secondary: ({ 松绿: "#23685b", 靛蓝: "#345b91", 葡萄紫: "#72517b" }[notebook.accent] ?? "#23685b"),
           tertiary: "#438485",
           highlight: "rgba(143, 159, 169, 0.15)",

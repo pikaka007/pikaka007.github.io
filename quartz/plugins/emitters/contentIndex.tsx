@@ -16,6 +16,7 @@ export type ContentDetails = {
   links: SimpleSlug[]
   tags: string[]
   content: string
+  headings?: { text: string; slug: string }[]
   richContent?: string
   date?: Date
   description?: string
@@ -107,6 +108,7 @@ export const ContentIndex: QuartzEmitterPlugin<Partial<Options>> = (opts) => {
             slug,
             filePath: file.data.relativePath!,
             title: file.data.frontmatter?.title!,
+            headings: file.data.toc?.map(({text, slug}) => ({text, slug})),
             links: file.data.links ?? [],
             tags: file.data.frontmatter?.tags ?? [],
             content: file.data.text ?? "",

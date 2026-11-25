@@ -207,7 +207,7 @@
 
             @media all and not ($mobile) {
               & > p.card-description {
-                display: none;
+                display: block;
               }
             }
 

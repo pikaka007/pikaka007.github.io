@@ -1,3 +1,4 @@
+import { escapeHTML, unescapeHTML } from "../../util/escape"
 import FlexSearch, { DefaultDocumentSearchResults } from "flexsearch"
 import { ContentDetails } from "../../plugins/emitters/contentIndex"
 import { registerEscapeHandler, removeAllChildren } from "./util"
@@ -46,7 +47,6 @@ let index = new FlexSearch.Document<Item>({
 
 const p = new DOMParser()
 const fetchContentCache: Map<FullSlug, Element[]> = new Map()
-const contextWindowWords = 30
 const numSearchResults = 8
 const numTagResults = 5
 
@@ -63,48 +63,20 @@ const tokenizeTerm = (term: string) => {
 }
 
 function highlight(searchTerm: string, text: string, trim?: boolean) {
-  const tokenizedTerms = tokenizeTerm(searchTerm)
-  let tokenizedText = text.split(/\s+/).filter((t) => t !== "")
-
-  let startIndex = 0
-  let endIndex = tokenizedText.length - 1
-  if (trim) {
-    const includesCheck = (tok: string) =>
-      tokenizedTerms.some((term) => tok.toLowerCase().startsWith(term.toLowerCase()))
-    const occurrencesIndices = tokenizedText.map(includesCheck)
-
-    let bestSum = 0
-    let bestIndex = 0
-    for (let i = 0; i < Math.max(tokenizedText.length - contextWindowWords, 0); i++) {
-      const window = occurrencesIndices.slice(i, i + contextWindowWords)
-      const windowSum = window.reduce((total, cur) => total + (cur ? 1 : 0), 0)
-      if (windowSum >= bestSum) {
-        bestSum = windowSum
-        bestIndex = i
-      }
-    }
-
-    startIndex = Math.max(bestIndex - contextWindowWords, 0)
-    endIndex = Math.min(startIndex + 2 * contextWindowWords, tokenizedText.length - 1)
-    tokenizedText = tokenizedText.slice(startIndex, endIndex)
+  const terms = [...new Set([...tokenizeTerm(searchTerm), ...encoder(searchTerm)])]
+  if (!terms.length) return escapeHTML(trim ? text.slice(0, 120) : text)
+  const pattern = terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")
+  const regex = new RegExp(pattern, "gi")
+  const hit = text.search(regex)
+  const start = trim ? Math.max(0, hit - 40) : 0
+  const excerpt = trim ? text.slice(start, start + Math.max(120, searchTerm.length + 50)) : text
+  let output = start ? "…" : ""
+  let pos = 0
+  for (const match of excerpt.matchAll(regex)) {
+    output += escapeHTML(excerpt.slice(pos, match.index)) + '<span class="highlight">' + escapeHTML(match[0]) + '</span>'
+    pos = match.index! + match[0].length
   }
-
-  const slice = tokenizedText
-    .map((tok) => {
-      // see if this tok is prefixed by any search terms
-      for (const searchTok of tokenizedTerms) {
-        if (tok.toLowerCase().includes(searchTok.toLowerCase())) {
-          const regex = new RegExp(searchTok.toLowerCase(), "gi")
-          return tok.replace(regex, `<span class="highlight">$&</span>`)
-        }
-      }
-      return tok
-    })
-    .join(" ")
-
-  return `${startIndex === 0 ? "" : "..."}${slice}${
-    endIndex === tokenizedText.length - 1 ? "" : "..."
-  }`
+  return output + escapeHTML(excerpt.slice(pos)) + (start + excerpt.length < text.length ? "…" : "")
 }
 
 function highlightHTML(searchTerm: string, el: HTMLElement) {
@@ -122,7 +94,7 @@ function highlightHTML(searchTerm: string, el: HTMLElement) {
   const highlightTextNodes = (node: Node, term: string) => {
     if (node.nodeType === Node.TEXT_NODE) {
       const nodeText = node.nodeValue ?? ""
-      const regex = new RegExp(term.toLowerCase(), "gi")
+      const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi")
       const matches = nodeText.match(regex)
       if (!matches || matches.length === 0) return
       const spanContainer = document.createElement("span")
@@ -270,11 +242,14 @@ async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: 
 
   const formatForDisplay = (term: string, id: number) => {
     const slug = idDataMap[id]
+    const entry: ContentDetails = data[slug]
+    const heading = searchType === "basic" && term.trim() ? entry.headings?.find(h => h.text.toLowerCase().includes(term.trim().toLowerCase())) : undefined
     return {
       id,
       slug,
-      title: searchType === "tags" ? data[slug].title : highlight(term, data[slug].title ?? ""),
-      content: highlight(term, data[slug].content ?? "", true),
+      heading,
+      title: searchType === "tags" ? escapeHTML(data[slug].title) : highlight(term, data[slug].title ?? ""),
+      content: highlight(term, heading?.text ?? unescapeHTML(entry.content ?? ""), true),
       tags: highlightTags(term.substring(1), data[slug].tags),
     }
   }
@@ -287,9 +262,9 @@ async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: 
     return tags
       .map((tag) => {
         if (tag.toLowerCase().includes(term.toLowerCase())) {
-          return `<li><p class="match-tag">#${tag}</p></li>`
+          return `<li><p class="match-tag">#${escapeHTML(tag)}</p></li>`
         } else {
-          return `<li><p>#${tag}</p></li>`
+          return `<li><p>#${escapeHTML(tag)}</p></li>`
         }
       })
       .slice(0, numTagResults)
@@ -299,12 +274,14 @@ async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: 
     return new URL(resolveRelative(currentSlug, slug), location.toString())
   }
 
-  const resultToHTML = ({ slug, title, content, tags }: Item) => {
+  const resultToHTML = ({ slug, title, content, tags, heading }: Item) => {
     const htmlTags = tags.length > 0 ? `<ul class="tags">${tags.join("")}</ul>` : ``
     const itemTile = document.createElement("a")
     itemTile.classList.add("result-card")
     itemTile.id = slug
-    itemTile.href = resolveUrl(slug).toString()
+    const url = resolveUrl(slug)
+    if (heading) url.hash = heading.slug
+    itemTile.href = url.toString()
     itemTile.innerHTML = `
       <h3 class="card-title">${title}</h3>
       ${htmlTags}
@@ -435,7 +412,7 @@ async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: 
       searchResults = await index.searchAsync({
         query: currentSearchTerm,
         limit: numSearchResults,
-        index: ["title", "content"],
+        index: ["title", "content", "tags"],
       })
     }
 

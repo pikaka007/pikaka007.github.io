@@ -1,4 +1,5 @@
 import { PageLayout, SharedLayout } from "./quartz/cfg"
+import MobileOutline from "./quartz/components/MobileOutline"
 import Notebook from "./quartz/components/Notebook"
 import * as Component from "./quartz/components"
 
@@ -22,7 +23,7 @@ export const defaultContentPageLayout: PageLayout = {
       component: Component.Breadcrumbs(),
       condition: (page) => page.fileData.slug !== "index",
     }),
-    ...[Component.ArticleTitle(), Component.ContentMeta(), Component.TagList()].map(component =>
+    ...[Component.ArticleTitle(), Component.ContentMeta(), Component.TagList(), MobileOutline].map(component =>
       Component.ConditionalRender({component, condition: p => p.fileData.slug !== "index"})),
   ],
   left: [
@@ -41,8 +42,8 @@ export const defaultContentPageLayout: PageLayout = {
     Component.Explorer(),
   ],
   right: [
-    Component.Graph(),
     Component.DesktopOnly(Component.TableOfContents()),
+    Component.Graph(),
     Component.Backlinks(),
   ],
 }
