@@ -42,14 +42,6 @@
       "types": [
         "tool"
       ]
-    },
-    {
-      "id": "log",
-      "name": "学习记录",
-      "types": [
-        "log",
-        "reflection"
-      ]
     }
   ]
 }
